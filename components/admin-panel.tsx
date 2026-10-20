@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { ArrowLeft, Edit2, LogOut, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Edit2, Languages, LogOut, Plus, Trash2 } from "lucide-react";
 import { getSupabaseBrowserClient, hasSupabaseConfig } from "@/lib/supabase-browser";
 import { getSupabaseUrlError } from "@/lib/supabase-config";
 import type { MenuCategory, MenuItem } from "@/lib/menu";
@@ -12,6 +12,140 @@ type AuthStatus = "checking" | "signedOut" | "notAdmin" | "admin";
 type AdminTab = "items" | "categories";
 type ItemForm = Omit<MenuItem, "id" | "position"> & { id?: string };
 type CategoryForm = Omit<MenuCategory, "id" | "position"> & { id?: string };
+type Language = "ar" | "en";
+
+const translations = {
+  ar: {
+    language: "English",
+    adminPanel: "لوحة إدارة القائمة",
+    viewMenu: "عرض القائمة",
+    signOut: "تسجيل الخروج",
+    checking: "جارٍ التحقق من صلاحيات الإدارة...",
+    loginTitle: "تسجيل دخول الإدارة",
+    loginDescription: "سجّل الدخول بحساب مصرح له لتعديل القائمة المشتركة.",
+    email: "البريد الإلكتروني",
+    password: "كلمة المرور",
+    signIn: "تسجيل الدخول",
+    signingIn: "جارٍ تسجيل الدخول...",
+    configMissing: "أضف إعدادات Supabase إلى ملف .env.local، ثم نفّذ ملف الإعداد supabase/schema.sql.",
+    notAdminTitle: "الحساب لا يملك صلاحية الإدارة",
+    notAdminDescription: "تم تسجيل الدخول، لكن هذا الحساب غير مضاف إلى قائمة مسؤولي القائمة.",
+    menuManagement: "إدارة القائمة",
+    editMenu: "تعديل القائمة",
+    sharedMenuNote: "تُحفظ التغييرات في القائمة المشتركة لجميع الزوار.",
+    newItem: "إضافة صنف",
+    newCategory: "إضافة قسم",
+    items: "الأصناف",
+    categories: "الأقسام",
+    editItem: "تعديل الصنف",
+    addItem: "إضافة صنف جديد",
+    englishName: "الاسم بالإنجليزية",
+    arabicName: "الاسم بالعربية",
+    englishDescription: "الوصف بالإنجليزية",
+    arabicDescription: "الوصف بالعربية",
+    imageUrl: "رابط الصورة",
+    price: "السعر",
+    category: "القسم",
+    chooseCategory: "اختر القسم",
+    availability: "حالة العرض",
+    visible: "ظاهر في القائمة",
+    hidden: "مخفي عن الزبائن",
+    saveItem: "حفظ الصنف",
+    editCategory: "تعديل القسم",
+    addCategory: "إضافة قسم جديد",
+    saveCategory: "حفظ القسم",
+    cancel: "إلغاء",
+    saving: "جارٍ الحفظ...",
+    delete: "حذف",
+    edit: "تعديل",
+    uncategorized: "بدون قسم",
+    visibleShort: "ظاهر",
+    hiddenShort: "مخفي",
+    itemCount: "صنف",
+    deleteItemConfirm: "هل تريد حذف هذا الصنف؟",
+    deleteCategoryConfirm: "هل تريد حذف هذا القسم وجميع الأصناف التابعة له؟",
+    itemSaved: "تم حفظ الصنف.",
+    categorySaved: "تم حفظ القسم.",
+    itemDeleted: "تم حذف الصنف.",
+    categoryDeleted: "تم حذف القسم وأصنافه.",
+    loadError: "تعذر تحميل القائمة.",
+    reloadAfterSave: "تم الحفظ، لكن تعذر إعادة تحميل القائمة.",
+    reloadAfterDelete: "تم الحذف، لكن تعذر إعادة تحميل القائمة.",
+    signInError: "فشل تسجيل الدخول",
+    signOutError: "فشل تسجيل الخروج",
+    adminCheckError: "تعذر التحقق من صلاحيات الإدارة",
+    saveItemError: "تعذر حفظ الصنف",
+    saveCategoryError: "تعذر حفظ القسم",
+    deleteItemError: "تعذر حذف الصنف",
+    deleteCategoryError: "تعذر حذف القسم",
+    authGenericError: "حدث خطأ غير متوقع.",
+  },
+  en: {
+    language: "العربية",
+    adminPanel: "Menu admin panel",
+    viewMenu: "View menu",
+    signOut: "Sign out",
+    checking: "Checking admin access...",
+    loginTitle: "Admin sign in",
+    loginDescription: "Sign in with an authorized account to edit the shared menu.",
+    email: "Email",
+    password: "Password",
+    signIn: "Sign in",
+    signingIn: "Signing in...",
+    configMissing: "Add the Supabase settings to .env.local, then run supabase/schema.sql.",
+    notAdminTitle: "Admin access required",
+    notAdminDescription: "This account is signed in, but is not on the menu admin allowlist.",
+    menuManagement: "MENU MANAGEMENT",
+    editMenu: "Edit your menu",
+    sharedMenuNote: "Changes are saved to the shared menu for all QR visitors.",
+    newItem: "New item",
+    newCategory: "New category",
+    items: "Items",
+    categories: "Categories",
+    editItem: "Edit menu item",
+    addItem: "Add menu item",
+    englishName: "English name",
+    arabicName: "Arabic name",
+    englishDescription: "English description",
+    arabicDescription: "Arabic description",
+    imageUrl: "Image URL",
+    price: "Price",
+    category: "Category",
+    chooseCategory: "Choose a category",
+    availability: "Availability",
+    visible: "Available on menu",
+    hidden: "Hidden from customers",
+    saveItem: "Save item",
+    editCategory: "Edit category",
+    addCategory: "Add category",
+    saveCategory: "Save category",
+    cancel: "Cancel",
+    saving: "Saving...",
+    delete: "Delete",
+    edit: "Edit",
+    uncategorized: "Uncategorized",
+    visibleShort: "Visible",
+    hiddenShort: "Hidden",
+    itemCount: "items",
+    deleteItemConfirm: "Delete this menu item?",
+    deleteCategoryConfirm: "Delete this category and all its menu items?",
+    itemSaved: "Menu item saved.",
+    categorySaved: "Category saved.",
+    itemDeleted: "Menu item deleted.",
+    categoryDeleted: "Category and its menu items deleted.",
+    loadError: "Could not load menu.",
+    reloadAfterSave: "Saved, but could not reload menu.",
+    reloadAfterDelete: "Deleted, but could not reload menu.",
+    signInError: "Sign-in failed",
+    signOutError: "Sign-out failed",
+    adminCheckError: "Admin access check failed",
+    saveItemError: "Could not save item",
+    saveCategoryError: "Could not save category",
+    deleteItemError: "Could not delete item",
+    deleteCategoryError: "Could not delete category",
+    authGenericError: "An unexpected error occurred.",
+  },
+} as const;
 
 const emptyItem = (categoryId: string): ItemForm => ({
   category_id: categoryId,
@@ -25,6 +159,8 @@ const emptyItem = (categoryId: string): ItemForm => ({
 });
 
 export default function AdminPanel() {
+  const [language, setLanguage] = useState<Language>("ar");
+  const t = translations[language];
   const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -67,7 +203,7 @@ export default function AdminPanel() {
     }
     const { data, error: adminError } = await supabase.rpc("is_menu_admin");
     if (adminError) {
-      setError(`Admin access check failed: ${adminError.message}`);
+      setError(`${t.adminCheckError}: ${adminError.message}`);
       setAuthStatus("notAdmin");
       return;
     }
@@ -79,9 +215,9 @@ export default function AdminPanel() {
     try {
       await loadData();
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Could not load menu.");
+      setError(loadError instanceof Error ? loadError.message : t.loadError);
     }
-  }, [loadData, supabase]);
+  }, [loadData, supabase, t.adminCheckError, t.loadError]);
 
   useEffect(() => {
     const check = setTimeout(() => void checkAdmin(), 0);
@@ -99,7 +235,7 @@ export default function AdminPanel() {
     });
     setBusy(false);
     if (signInError) {
-      setError(`Sign-in failed: ${signInError.message}`);
+      setError(`${t.signInError}: ${signInError.message}`);
       return;
     }
     await checkAdmin();
@@ -111,7 +247,7 @@ export default function AdminPanel() {
     const { error: signOutError } = await supabase.auth.signOut();
     setBusy(false);
     if (signOutError) {
-      setError(`Sign-out failed: ${signOutError.message}`);
+      setError(`${t.signOutError}: ${signOutError.message}`);
       return;
     }
     setAuthStatus("signedOut");
@@ -134,15 +270,15 @@ export default function AdminPanel() {
         });
     setBusy(false);
     if (result.error) {
-      setError(`Could not save item: ${result.error.message}`);
+      setError(`${t.saveItemError}: ${result.error.message}`);
       return;
     }
     setItemForm(null);
-    setNotice("Menu item saved.");
+    setNotice(t.itemSaved);
     try {
       await loadData();
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Saved, but could not reload menu.");
+      setError(loadError instanceof Error ? loadError.message : t.reloadAfterSave);
     }
   }
 
@@ -162,40 +298,40 @@ export default function AdminPanel() {
         });
     setBusy(false);
     if (result.error) {
-      setError(`Could not save category: ${result.error.message}`);
+      setError(`${t.saveCategoryError}: ${result.error.message}`);
       return;
     }
     setCategoryForm(null);
-    setNotice("Category saved.");
+    setNotice(t.categorySaved);
     try {
       await loadData();
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Saved, but could not reload menu.");
+      setError(loadError instanceof Error ? loadError.message : t.reloadAfterSave);
     }
   }
 
   async function deleteItem(item: MenuItem) {
-    if (!supabase || !window.confirm(`Delete “${item.name_en}”?`)) return;
+    if (!supabase || !window.confirm(`${t.deleteItemConfirm}\n${item.name_en}`)) return;
     setBusy(true);
     setError("");
     const { error: deleteError } = await supabase.from("menu_items").delete().eq("id", item.id);
     setBusy(false);
     if (deleteError) {
-      setError(`Could not delete item: ${deleteError.message}`);
+      setError(`${t.deleteItemError}: ${deleteError.message}`);
       return;
     }
-    setNotice("Menu item deleted.");
+    setNotice(t.itemDeleted);
     try {
       await loadData();
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Deleted, but could not reload menu.");
+      setError(loadError instanceof Error ? loadError.message : t.reloadAfterDelete);
     }
   }
 
   async function deleteCategory(category: MenuCategory) {
     if (
       !supabase ||
-      !window.confirm(`Delete “${category.name_en}” and all its menu items?`)
+      !window.confirm(`${t.deleteCategoryConfirm}\n${category.name_en}`)
     ) return;
     setBusy(true);
     setError("");
@@ -205,52 +341,59 @@ export default function AdminPanel() {
       .eq("id", category.id);
     setBusy(false);
     if (deleteError) {
-      setError(`Could not delete category: ${deleteError.message}`);
+      setError(`${t.deleteCategoryError}: ${deleteError.message}`);
       return;
     }
-    setNotice("Category and its menu items deleted.");
+    setNotice(t.categoryDeleted);
     try {
       await loadData();
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Deleted, but could not reload menu.");
+      setError(loadError instanceof Error ? loadError.message : t.reloadAfterDelete);
     }
   }
 
   return (
-    <div className="admin-page">
+    <div className="admin-page" dir={language === "ar" ? "rtl" : "ltr"}>
       <header className="admin-header">
         <Link className="admin-brand" href="/">
           <Image src="/shahbaa-logo.jpg" alt="" width={49} height={49} />
-          <span>Shahbaa menu<small>Admin panel</small></span>
+          <span>Shahbaa<small>{t.adminPanel}</small></span>
         </Link>
         <div className="admin-actions">
+          <button
+            className="language-toggle"
+            type="button"
+            onClick={() => setLanguage(language === "ar" ? "en" : "ar")}
+            aria-label={language === "ar" ? "Switch to English" : "التبديل إلى العربية"}
+          >
+            <Languages size={15} /> {t.language}
+          </button>
           {authStatus === "admin" && (
             <button className="logout-button" type="button" onClick={signOut} disabled={busy}>
-              <LogOut size={14} /> Sign out
+              <LogOut size={14} /> {t.signOut}
             </button>
           )}
-          <Link className="admin-back" href="/"><ArrowLeft size={14} /> View menu</Link>
+          <Link className="admin-back" href="/"><ArrowLeft size={14} /> {t.viewMenu}</Link>
         </div>
       </header>
 
       {authStatus === "checking" ? (
-        <div className="menu-message">Checking admin access...</div>
+        <div className="menu-message">{t.checking}</div>
       ) : authStatus === "signedOut" ? (
         <main className="login-wrap">
           <form className="login-card" onSubmit={signIn}>
             <span className="menu-kicker">SHAHBAA CAFÉ</span>
-            <h1>Admin sign in</h1>
-            <p>Sign in with an authorized account to edit the live menu.</p>
+            <h1>{t.loginTitle}</h1>
+            <p>{t.loginDescription}</p>
             {!hasSupabaseConfig && (
               <div className="admin-warning">
                 {getSupabaseUrlError(process.env.NEXT_PUBLIC_SUPABASE_URL) ??
-                  "Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local."}{" "}
-                Then run the setup SQL in <code>supabase/schema.sql</code>.
+                  t.configMissing}
               </div>
             )}
             <div className="login-fields">
               <label>
-                Email
+                {t.email}
               <input
                 type="email"
                 value={email}
@@ -260,7 +403,7 @@ export default function AdminPanel() {
               />
               </label>
               <label>
-              Password
+              {t.password}
               <input
                 type="password"
                 value={password}
@@ -271,7 +414,7 @@ export default function AdminPanel() {
               </label>
               {error && <span className="admin-status error">{error}</span>}
               <button className="admin-button" type="submit" disabled={busy || !hasSupabaseConfig}>
-                {busy ? "Signing in..." : "Sign in"}
+                {busy ? t.signingIn : t.signIn}
               </button>
             </div>
           </form>
@@ -279,19 +422,19 @@ export default function AdminPanel() {
       ) : authStatus === "notAdmin" ? (
         <main className="login-wrap">
           <section className="login-card">
-            <h1>Admin access required</h1>
-            <p>This account is signed in, but is not on the menu admin allowlist.</p>
+            <h1>{t.notAdminTitle}</h1>
+            <p>{t.notAdminDescription}</p>
             {error && <div className="admin-status error">{error}</div>}
-            <button className="admin-button" type="button" onClick={signOut}>Sign out</button>
+            <button className="admin-button" type="button" onClick={signOut}>{t.signOut}</button>
           </section>
         </main>
       ) : (
         <main className="admin-main">
           <div className="admin-title-row">
             <div>
-              <span className="menu-kicker">MENU MANAGEMENT</span>
-              <h1>Edit your menu</h1>
-              <p>Changes are saved to the shared menu for all QR visitors.</p>
+              <span className="menu-kicker">{t.menuManagement}</span>
+              <h1>{t.editMenu}</h1>
+              <p>{t.sharedMenuNote}</p>
             </div>
             <div className="admin-actions">
               <button
@@ -300,14 +443,14 @@ export default function AdminPanel() {
                 onClick={() => { setError(""); setNotice(""); setItemForm(emptyItem(categories[0]?.id ?? "")); }}
                 disabled={!categories.length}
               >
-                <Plus size={15} /> New item
+                <Plus size={15} /> {t.newItem}
               </button>
               <button
                 className="admin-button"
                 type="button"
                 onClick={() => { setError(""); setNotice(""); setCategoryForm({ name_en: "", name_ar: "" }); }}
               >
-                <Plus size={15} /> New category
+                <Plus size={15} /> {t.newCategory}
               </button>
             </div>
           </div>
@@ -317,57 +460,57 @@ export default function AdminPanel() {
 
           {itemForm ? (
             <form className="admin-form" onSubmit={saveItem}>
-              <h2>{itemForm.id ? "Edit menu item" : "Add menu item"}</h2>
-              <label>English name<input value={itemForm.name_en} onChange={(event) => setItemForm({ ...itemForm, name_en: event.target.value })} required /></label>
-              <label>Arabic name<input dir="rtl" value={itemForm.name_ar} onChange={(event) => setItemForm({ ...itemForm, name_ar: event.target.value })} required /></label>
-              <label>English description<textarea value={itemForm.description_en} onChange={(event) => setItemForm({ ...itemForm, description_en: event.target.value })} /></label>
-              <label>Arabic description<textarea dir="rtl" value={itemForm.description_ar} onChange={(event) => setItemForm({ ...itemForm, description_ar: event.target.value })} /></label>
-              <label>Image URL<input type="url" placeholder="https://..." value={itemForm.image_url ?? ""} onChange={(event) => setItemForm({ ...itemForm, image_url: event.target.value })} /></label>
-              <label>Price<input type="number" min="0" step="0.01" value={itemForm.price} onChange={(event) => setItemForm({ ...itemForm, price: Number(event.target.value) })} required /></label>
-              <label>Category<select value={itemForm.category_id} onChange={(event) => setItemForm({ ...itemForm, category_id: event.target.value })} required>{categories.map((category) => <option key={category.id} value={category.id}>{category.name_en} / {category.name_ar}</option>)}</select></label>
-              <label>Availability<select value={itemForm.available ? "yes" : "no"} onChange={(event) => setItemForm({ ...itemForm, available: event.target.value === "yes" })}><option value="yes">Available on menu</option><option value="no">Hidden from customers</option></select></label>
+              <h2>{itemForm.id ? t.editItem : t.addItem}</h2>
+              <label>{t.englishName}<input value={itemForm.name_en} onChange={(event) => setItemForm({ ...itemForm, name_en: event.target.value })} required /></label>
+              <label>{t.arabicName}<input dir="rtl" value={itemForm.name_ar} onChange={(event) => setItemForm({ ...itemForm, name_ar: event.target.value })} required /></label>
+              <label>{t.englishDescription}<textarea value={itemForm.description_en} onChange={(event) => setItemForm({ ...itemForm, description_en: event.target.value })} /></label>
+              <label>{t.arabicDescription}<textarea dir="rtl" value={itemForm.description_ar} onChange={(event) => setItemForm({ ...itemForm, description_ar: event.target.value })} /></label>
+              <label>{t.imageUrl}<input type="url" placeholder="https://..." value={itemForm.image_url ?? ""} onChange={(event) => setItemForm({ ...itemForm, image_url: event.target.value })} /></label>
+              <label>{t.price}<input type="number" min="0" step="0.01" value={itemForm.price} onChange={(event) => setItemForm({ ...itemForm, price: Number(event.target.value) })} required /></label>
+              <label>{t.category}<select value={itemForm.category_id} onChange={(event) => setItemForm({ ...itemForm, category_id: event.target.value })} required>{categories.map((category) => <option key={category.id} value={category.id}>{category.name_ar} / {category.name_en}</option>)}</select></label>
+              <label>{t.availability}<select value={itemForm.available ? "yes" : "no"} onChange={(event) => setItemForm({ ...itemForm, available: event.target.value === "yes" })}><option value="yes">{t.visible}</option><option value="no">{t.hidden}</option></select></label>
               <div className="admin-form-buttons">
-                <button className="admin-button" type="submit" disabled={busy}>{busy ? "Saving..." : "Save item"}</button>
-                <button className="admin-button secondary" type="button" onClick={() => setItemForm(null)}>Cancel</button>
+                <button className="admin-button" type="submit" disabled={busy}>{busy ? t.saving : t.saveItem}</button>
+                <button className="admin-button secondary" type="button" onClick={() => setItemForm(null)}>{t.cancel}</button>
               </div>
             </form>
           ) : categoryForm ? (
             <form className="admin-form" onSubmit={saveCategory}>
-              <h2>{categoryForm.id ? "Edit category" : "Add category"}</h2>
-              <label>English name<input value={categoryForm.name_en} onChange={(event) => setCategoryForm({ ...categoryForm, name_en: event.target.value })} required /></label>
-              <label>Arabic name<input dir="rtl" value={categoryForm.name_ar} onChange={(event) => setCategoryForm({ ...categoryForm, name_ar: event.target.value })} required /></label>
+              <h2>{categoryForm.id ? t.editCategory : t.addCategory}</h2>
+              <label>{t.englishName}<input value={categoryForm.name_en} onChange={(event) => setCategoryForm({ ...categoryForm, name_en: event.target.value })} required /></label>
+              <label>{t.arabicName}<input dir="rtl" value={categoryForm.name_ar} onChange={(event) => setCategoryForm({ ...categoryForm, name_ar: event.target.value })} required /></label>
               <div className="admin-form-buttons">
-                <button className="admin-button" type="submit" disabled={busy}>{busy ? "Saving..." : "Save category"}</button>
-                <button className="admin-button secondary" type="button" onClick={() => setCategoryForm(null)}>Cancel</button>
+                <button className="admin-button" type="submit" disabled={busy}>{busy ? t.saving : t.saveCategory}</button>
+                <button className="admin-button secondary" type="button" onClick={() => setCategoryForm(null)}>{t.cancel}</button>
               </div>
             </form>
           ) : (
             <>
               <div className="admin-tabs" role="tablist">
-                <button type="button" className={tab === "items" ? "active" : ""} onClick={() => setTab("items")}>Items ({items.length})</button>
-                <button type="button" className={tab === "categories" ? "active" : ""} onClick={() => setTab("categories")}>Categories ({categories.length})</button>
+                <button type="button" className={tab === "items" ? "active" : ""} onClick={() => setTab("items")}>{t.items} ({items.length})</button>
+                <button type="button" className={tab === "categories" ? "active" : ""} onClick={() => setTab("categories")}>{t.categories} ({categories.length})</button>
               </div>
               <div className="admin-list">
                 {tab === "items" ? items.map((item) => (
                   <div className="admin-row" key={item.id}>
                     <div className="admin-row-copy">
-                      <strong>{item.name_en} · {item.price}</strong>
-                      <span>{item.name_ar} · {categories.find((category) => category.id === item.category_id)?.name_en ?? "Uncategorized"} · {item.available ? "Visible" : "Hidden"}</span>
+                      <strong>{language === "ar" ? item.name_ar : item.name_en} · {item.price}</strong>
+                      <span>{language === "ar" ? item.name_en : item.name_ar} · {categories.find((category) => category.id === item.category_id)?.[language === "ar" ? "name_ar" : "name_en"] ?? t.uncategorized} · {item.available ? t.visibleShort : t.hiddenShort}</span>
                     </div>
                     <div className="admin-row-actions">
-                      <button type="button" aria-label={`Edit ${item.name_en}`} onClick={() => { setError(""); setNotice(""); setItemForm({ ...item }); }}><Edit2 size={14} /></button>
-                      <button type="button" aria-label={`Delete ${item.name_en}`} onClick={() => void deleteItem(item)} disabled={busy}><Trash2 size={14} /></button>
+                      <button type="button" aria-label={`${t.edit} ${item.name_ar}`} onClick={() => { setError(""); setNotice(""); setItemForm({ ...item }); }}><Edit2 size={14} /></button>
+                      <button type="button" aria-label={`${t.delete} ${item.name_ar}`} onClick={() => void deleteItem(item)} disabled={busy}><Trash2 size={14} /></button>
                     </div>
                   </div>
                 )) : categories.map((category) => (
                   <div className="admin-row" key={category.id}>
                     <div className="admin-row-copy">
-                      <strong>{category.name_en}</strong>
-                      <span>{category.name_ar} · {items.filter((item) => item.category_id === category.id).length} items</span>
+                      <strong>{language === "ar" ? category.name_ar : category.name_en}</strong>
+                      <span>{language === "ar" ? category.name_en : category.name_ar} · {items.filter((item) => item.category_id === category.id).length} {t.itemCount}</span>
                     </div>
                     <div className="admin-row-actions">
-                      <button type="button" aria-label={`Edit ${category.name_en}`} onClick={() => { setError(""); setNotice(""); setCategoryForm({ ...category }); }}><Edit2 size={14} /></button>
-                      <button type="button" aria-label={`Delete ${category.name_en}`} onClick={() => void deleteCategory(category)} disabled={busy}><Trash2 size={14} /></button>
+                      <button type="button" aria-label={`${t.edit} ${category.name_ar}`} onClick={() => { setError(""); setNotice(""); setCategoryForm({ ...category }); }}><Edit2 size={14} /></button>
+                      <button type="button" aria-label={`${t.delete} ${category.name_ar}`} onClick={() => void deleteCategory(category)} disabled={busy}><Trash2 size={14} /></button>
                     </div>
                   </div>
                 ))}
