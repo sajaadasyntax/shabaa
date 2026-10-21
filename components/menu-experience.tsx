@@ -32,9 +32,9 @@ const text = {
     item: "item",
     review: "Your selection",
     scan: "Scan for our menu",
-    download: "Download QR code",
+    download: "Download print-ready card",
     close: "Close",
-    qrHint: "Save this code or scan it to open our menu.",
+    qrHint: "A print-ready card with our logo and menu QR code.",
     priceNote: "Prices shown as listed on our printed menu.",
     admin: "Admin",
     loading: "Loading menu...",
@@ -52,9 +52,9 @@ const text = {
     item: "صنف",
     review: "طلبك",
     scan: "امسح لعرض القائمة",
-    download: "تحميل رمز QR",
+    download: "تحميل بطاقة QR للطباعة",
     close: "إغلاق",
-    qrHint: "احفظ الرمز أو امسحه لفتح قائمتنا.",
+    qrHint: "بطاقة جاهزة للطباعة مع شعارنا ورمز القائمة.",
     priceNote: "الأسعار كما وردت في القائمة المطبوعة.",
     admin: "الإدارة",
     loading: "جارٍ تحميل القائمة...",
@@ -101,6 +101,89 @@ function imageForItem(item: MenuItem) {
   return photos[itemHash % photos.length];
 }
 
+function loadImage(source: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new window.Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Could not load the Shahbaa logo for the print card."));
+    image.src = source;
+  });
+}
+
+async function createPrintableCard(qrCode: string) {
+  await document.fonts.ready;
+  const [qrImage, logo] = await Promise.all([
+    loadImage(qrCode),
+    loadImage("/shahbaa-logo.jpg"),
+  ]);
+  const canvas = document.createElement("canvas");
+  canvas.width = 1240;
+  canvas.height = 1748;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Your browser could not prepare the printable image.");
+
+  context.fillStyle = "#fffdf8";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.strokeStyle = "#2b0908";
+  context.lineWidth = 18;
+  context.strokeRect(35, 35, canvas.width - 70, canvas.height - 70);
+  context.strokeStyle = "#ed7b0b";
+  context.lineWidth = 5;
+  context.strokeRect(58, 58, canvas.width - 116, canvas.height - 116);
+
+  context.fillStyle = "#2b0908";
+  context.fillRect(64, 64, canvas.width - 128, 510);
+  context.save();
+  context.beginPath();
+  context.arc(canvas.width / 2, 248, 148, 0, Math.PI * 2);
+  context.fillStyle = "#fffdf8";
+  context.fill();
+  context.clip();
+  context.drawImage(logo, canvas.width / 2 - 148, 100, 296, 296);
+  context.restore();
+
+  context.textAlign = "center";
+  context.direction = "rtl";
+  context.fillStyle = "#fffdf8";
+  context.font = '600 52px "Noto Sans Arabic", Arial, sans-serif';
+  context.fillText("شهبا كافيه", canvas.width / 2, 460);
+  context.direction = "ltr";
+  context.fillStyle = "#ffbd6b";
+  context.font = '600 23px "DM Sans", Arial, sans-serif';
+  context.fillText("SHAHBAA CAFE  ·  ONLY THE BEST", canvas.width / 2, 515);
+
+  context.fillStyle = "#47110d";
+  context.font = '600 41px "Noto Sans Arabic", Arial, sans-serif';
+  context.direction = "rtl";
+  context.fillText("امسح لعرض القائمة", canvas.width / 2, 655);
+  context.direction = "ltr";
+  context.fillStyle = "#81776d";
+  context.font = '500 24px "DM Sans", Arial, sans-serif';
+  context.fillText("SCAN TO VIEW OUR MENU", canvas.width / 2, 700);
+
+  const qrSize = 750;
+  const qrX = (canvas.width - qrSize) / 2;
+  const qrY = 755;
+  context.fillStyle = "#ffffff";
+  context.fillRect(qrX - 25, qrY - 25, qrSize + 50, qrSize + 50);
+  context.strokeStyle = "#e8dfd3";
+  context.lineWidth = 2;
+  context.strokeRect(qrX - 25, qrY - 25, qrSize + 50, qrSize + 50);
+  context.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+  context.fillStyle = "#ed7b0b";
+  context.fillRect(450, 1578, 340, 5);
+  context.fillStyle = "#47110d";
+  context.direction = "rtl";
+  context.font = '500 24px "Noto Sans Arabic", Arial, sans-serif';
+  context.fillText("قهوة طيبة ومذاق يرضي الجميع", canvas.width / 2, 1640);
+  context.direction = "ltr";
+  context.fillStyle = "#81776d";
+  context.font = '500 18px "DM Sans", Arial, sans-serif';
+  context.fillText(window.location.host, canvas.width / 2, 1680);
+  return canvas.toDataURL("image/png");
+}
+
 export default function MenuExperience({
   categories,
   items,
@@ -115,7 +198,7 @@ export default function MenuExperience({
   const [cart, setCart] = useState<Record<string, number>>({});
   const [query, setQuery] = useState("");
   const [qrOpen, setQrOpen] = useState(false);
-  const [qrData, setQrData] = useState("");
+  const [printCard, setPrintCard] = useState("");
   const [qrError, setQrError] = useState("");
   const [reviewOpen, setReviewOpen] = useState(false);
   const labels = text[language];
@@ -142,14 +225,15 @@ export default function MenuExperience({
   async function showQr() {
     setQrOpen(true);
     setQrError("");
+    setPrintCard("");
     try {
-      setQrData(
-        await QRCode.toDataURL(window.location.href, {
-          width: 320,
-          margin: 2,
-          color: { dark: "#2b0908", light: "#fffdf8" },
-        }),
-      );
+      const qrCode = await QRCode.toDataURL(`${window.location.origin}/`, {
+        width: 750,
+        margin: 2,
+        errorCorrectionLevel: "H",
+        color: { dark: "#2b0908", light: "#ffffff" },
+      });
+      setPrintCard(await createPrintableCard(qrCode));
     } catch (error) {
       setQrError(
         error instanceof Error ? error.message : "Could not generate QR code.",
@@ -376,10 +460,20 @@ export default function MenuExperience({
                 <h2>{labels.scan}</h2>
                 <p>{labels.qrHint}</p>
                 {qrError ? <p className="modal-error">{qrError}</p> : null}
-                {qrData && (
+                {!qrError && !printCard && (
+                  <p className="qr-card-loading">{language === "ar" ? "جارٍ تجهيز بطاقة الطباعة..." : "Preparing the print card..."}</p>
+                )}
+                {printCard && (
                   <>
-                    <Image src={qrData} alt="QR code for Shahbaa menu" width={190} height={190} unoptimized />
-                    <a className="download-qr" href={qrData} download="shahbaa-menu-qr.png">
+                    <Image
+                      className="print-card-preview"
+                      src={printCard}
+                      alt={language === "ar" ? "بطاقة قائمة شهبا جاهزة للطباعة مع رمز QR" : "Shahbaa Café print-ready menu QR card"}
+                      width={248}
+                      height={350}
+                      unoptimized
+                    />
+                    <a className="download-qr" href={printCard} download="shahbaa-menu-print-card.png">
                       <QrCode size={15} /> {labels.download}
                     </a>
                   </>

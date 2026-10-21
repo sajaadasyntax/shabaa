@@ -99,6 +99,8 @@ button { color: inherit; }
 .menu-shell[dir="rtl"] .menu-modal h2 { font-family: "Noto Sans Arabic", var(--sans); font-size: 19px; }
 .menu-modal > p { max-width: 270px; margin: 0 0 15px; color: var(--muted); font-size: 10px; }
 .menu-modal > img { margin: 9px 0 12px; }
+.print-card-preview { width: min(248px, 70vw); height: auto; max-height: 48vh; object-fit: contain; border: 1px solid var(--line); box-shadow: 0 5px 18px #2b09081a; }
+.qr-card-loading { padding: 28px 0; }
 .modal-error { color: #a12e1e !important; }
 .download-qr { min-height: 38px; padding: 0 13px; display: flex; align-items: center; gap: 8px; background: var(--brown); color: white; font-size: 10px; }
 .review-list { width: 100%; margin-top: 10px; }
